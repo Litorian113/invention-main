@@ -410,8 +410,9 @@ def blend_overlay_with_frame(frame, overlay):
     return pil_to_cv2(composite.convert('RGB'))
 
 def basic_marker_detection():
-    """Optimierte ArUco marker detection function ohne Lag"""
-    print("Detection of ArUco Markers")
+    """ArUco marker detection mit AR-Overlays - zeigt erkannte Komponenten und Schritt-für-Schritt-Anleitung"""
+    print("AR Electronics Tutorial - Detection mit Overlay")
+    print("Links: Erkannte Komponenten | Rechts: Schritt-für-Schritt-Anleitung")
     print("Press 'q' to quit the application")
     
     # Use Logitech-optimized camera initialization
@@ -601,16 +602,18 @@ def basic_marker_detection():
             fps_start = time.time()
             fps_count = 0
         
-        # FPS-Display (VERGRÖSSERT)
-        cv2.putText(frame, f"FPS: {current_fps:.1f}", (10, 30), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-        cv2.putText(frame, f"Markers: {len(cached_markers)}", (10, 55), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        # AR-Overlay mit erkannten Komponenten und Schritt-für-Schritt-Anleitung
+        detected_components_list = [(marker_id, corners_2d) for marker_id, _, _, corners_2d in cached_markers]
+        draw_ar_overlay(frame, detected_components_list, w, h)
+        
+        # FPS-Display (kleinere Position, da Overlay-Panels mehr Platz brauchen)
+        cv2.putText(frame, f"FPS: {current_fps:.1f}", (w//2 - 50, 30), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        cv2.putText(frame, f"Markers: {len(cached_markers)}", (w//2 - 50, 50), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
         
         # Display the frame
-        # Erstelle Fenster im Vollbild-Modus
-        window_name = 'ArUco Marker Detection - Optimized'
-        cv2.imshow(window_name, frame)
+        cv2.imshow('AR Electronics Tutorial - Schritt-für-Schritt Anleitung', frame)
         
         # Break the loop when 'q' key is pressed (minimal delay)
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -739,6 +742,255 @@ def draw_perspective_box(frame, corners, padding=20, color=(0, 255, 255), thickn
         cv2.circle(frame, tuple(corner), 4, color, -1)
     
     return extended_corners
+
+def draw_ar_overlay(frame, detected_components, frame_width, frame_height):
+    """Zeichne AR-Overlay mit erkannten Komponenten links und Schritt-für-Schritt-Anleitung rechts"""
+    overlay_height = frame_height - 100
+    overlay_start_y = 50
+    
+    # Linkes Panel: Erkannte Komponenten
+    draw_components_panel(frame, detected_components, overlay_start_y, overlay_height)
+    
+    # Rechtes Panel: Schritt-für-Schritt-Anleitung
+    draw_instructions_panel(frame, detected_components, frame_width, overlay_start_y, overlay_height)
+
+def draw_components_panel(frame, detected_components, start_y, height):
+    """Zeichne das linke Panel mit erkannten Komponenten"""
+    panel_width = 280
+    panel_x = 20
+    
+    # Berechne verfügbaren Platz für Komponenten
+    header_height = 50  # Titel + Linie
+    available_height = height - header_height - 20  # Etwas Padding unten
+    
+    component_labels = {
+        0: "Arduino Leonardo",
+        1: "Breadboard", 
+        2: "LED",
+        3: "220 Ohm Resistor",
+        4: "Potentiometer",
+        5: "Jumper Wires"
+    }
+    
+    # Berechne optimale Zeilenhöhe basierend auf verfügbarem Platz
+    num_components = len(component_labels)
+    line_height = min(30, available_height // num_components) if num_components > 0 else 30
+    
+    # Berechne tatsächliche Panel-Höhe basierend auf Inhalt
+    actual_panel_height = header_height + (num_components * line_height) + 20
+    panel_height = min(actual_panel_height, height)
+    
+    # Panel-Hintergrund (semi-transparent)
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (panel_x - 10, start_y - 10), 
+                 (panel_x + panel_width, start_y + panel_height), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
+    
+    # Panel-Rahmen
+    cv2.rectangle(frame, (panel_x - 10, start_y - 10), 
+                 (panel_x + panel_width, start_y + panel_height), (0, 255, 255), 2)
+    
+    # Titel
+    cv2.putText(frame, "KOMPONENTEN", (panel_x, start_y + 20), 
+               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+    
+    # Linie unter Titel
+    cv2.line(frame, (panel_x, start_y + 30), (panel_x + panel_width - 20, start_y + 30), 
+             (0, 255, 255), 1)
+    
+    # Komponenten auflisten - kompakte Darstellung
+    y_offset = start_y + 45
+    
+    # Zeige alle verfügbaren Komponenten mit Status
+    for comp_id, comp_name in component_labels.items():
+        # Prüfe ob wir noch Platz haben
+        if y_offset + line_height > start_y + panel_height - 10:
+            break
+            
+        is_detected = comp_id in [comp[0] for comp in detected_components]
+        
+        # Status-Icon (kleiner)
+        icon_y = y_offset - 2
+        if is_detected:
+            cv2.circle(frame, (panel_x + 8, icon_y), 4, (0, 255, 0), -1)  # Grüner Kreis
+            text_color = (0, 255, 0)  # Grüner Text
+            status = "●"
+        else:
+            cv2.circle(frame, (panel_x + 8, icon_y), 4, (100, 100, 100), 1)  # Grauer Kreis
+            text_color = (150, 150, 150)  # Grauer Text
+            status = "○"
+        
+        # Kompakte Komponenten-Namen (gekürzt falls nötig)
+        display_name = comp_name
+        if len(comp_name) > 20:
+            display_name = comp_name[:17] + "..."
+        
+        # Komponenten-Name (kleinere Schrift für kompakte Darstellung)
+        cv2.putText(frame, f"{display_name}", (panel_x + 20, y_offset), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, text_color, 1)
+        
+        # Anzahl der erkannten Marker dieser Komponente
+        count = len([comp for comp in detected_components if comp[0] == comp_id])
+        if count > 0:
+            cv2.putText(frame, f"({count})", (panel_x + 200, y_offset), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, text_color, 1)
+        
+        y_offset += line_height
+
+def draw_instructions_panel(frame, detected_components, frame_width, start_y, height):
+    """Zeichne das rechte Panel mit Schritt-für-Schritt-Anleitung"""
+    panel_width = 350
+    panel_x = frame_width - panel_width - 20
+    
+    # Panel-Hintergrund (semi-transparent)
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (panel_x - 10, start_y - 10), 
+                 (panel_x + panel_width, start_y + height), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
+    
+    # Panel-Rahmen
+    cv2.rectangle(frame, (panel_x - 10, start_y - 10), 
+                 (panel_x + panel_width, start_y + height), (255, 165, 0), 2)
+    
+    # Bestimme aktuellen Schritt basierend auf erkannten Komponenten
+    current_step, step_info = get_current_step(detected_components)
+    
+    # Titel mit Schritt-Nummer
+    cv2.putText(frame, f"SCHRITT {current_step}/6", (panel_x, start_y + 20), 
+               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 165, 0), 2)
+    
+    # Linie unter Titel
+    cv2.line(frame, (panel_x, start_y + 30), (panel_x + panel_width - 20, start_y + 30), 
+             (255, 165, 0), 1)
+    
+    # Schritt-Titel
+    cv2.putText(frame, step_info["title"], (panel_x, start_y + 60), 
+               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    
+    # Schritt-Beschreibung (mehrzeilig)
+    y_offset = start_y + 90
+    for line in step_info["description"]:
+        cv2.putText(frame, line, (panel_x, y_offset), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
+        y_offset += 25
+    
+    # Benötigte Komponenten
+    y_offset += 15
+    cv2.putText(frame, "Benötigte Komponenten:", (panel_x, y_offset), 
+               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 165, 0), 1)
+    y_offset += 25
+    
+    for component in step_info["required_components"]:
+        is_available = component in [comp[0] for comp in detected_components]
+        color = (0, 255, 0) if is_available else (100, 100, 100)
+        status = "✓" if is_available else "○"
+        
+        component_labels = {
+            0: "Arduino Leonardo", 1: "Breadboard", 2: "LED",
+            3: "220 Ohm Resistor", 4: "Potentiometer", 5: "Jumper Wires"
+        }
+        comp_name = component_labels.get(component, f"ID: {component}")
+        
+        cv2.putText(frame, f"{status} {comp_name}", (panel_x + 10, y_offset), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+        y_offset += 20
+    
+    # Fortschrittsbalken
+    progress_y = start_y + height - 40
+    progress_width = panel_width - 40
+    progress_height = 8
+    
+    # Hintergrund der Fortschrittsleiste
+    cv2.rectangle(frame, (panel_x + 10, progress_y), 
+                 (panel_x + 10 + progress_width, progress_y + progress_height), 
+                 (100, 100, 100), -1)
+    
+    # Fortschritt
+    progress_fill = int((current_step / 6) * progress_width)
+    cv2.rectangle(frame, (panel_x + 10, progress_y), 
+                 (panel_x + 10 + progress_fill, progress_y + progress_height), 
+                 (0, 255, 0), -1)
+    
+    # Fortschritts-Text
+    cv2.putText(frame, f"Fortschritt: {int((current_step/6)*100)}%", 
+               (panel_x + 10, progress_y + 25), 
+               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+def get_current_step(detected_components):
+    """Bestimme den aktuellen Schritt basierend auf erkannten Komponenten"""
+    detected_ids = [comp[0] for comp in detected_components]
+    
+    # Definiere Schritte für ein einfaches LED-Circuit
+    steps = {
+        1: {
+            "title": "Vorbereitung",
+            "description": [
+                "Sammle alle benötigten Komponenten",
+                "Stelle sicher, dass alle Teile",
+                "verfügbar sind"
+            ],
+            "required_components": [0, 1, 2, 3, 5],  # Arduino, Breadboard, LED, Resistor, Wires
+            "completion_check": lambda ids: len(set([0, 1, 2, 3, 5]) & set(ids)) >= 3
+        },
+        2: {
+            "title": "Arduino & Breadboard",
+            "description": [
+                "Platziere Arduino und Breadboard",
+                "vor der Kamera",
+                "Beide sollten erkannt werden"
+            ],
+            "required_components": [0, 1],
+            "completion_check": lambda ids: 0 in ids and 1 in ids
+        },
+        3: {
+            "title": "LED hinzufügen",
+            "description": [
+                "Platziere die LED neben den",
+                "anderen Komponenten",
+                "Achte auf die Polarität"
+            ],
+            "required_components": [0, 1, 2],
+            "completion_check": lambda ids: all(comp in ids for comp in [0, 1, 2])
+        },
+        4: {
+            "title": "Widerstand einsetzen",
+            "description": [
+                "Füge den 220 Ohm Widerstand",
+                "zu den Komponenten hinzu",
+                "Er begrenzt den LED-Strom"
+            ],
+            "required_components": [0, 1, 2, 3],
+            "completion_check": lambda ids: all(comp in ids for comp in [0, 1, 2, 3])
+        },
+        5: {
+            "title": "Verkabelung",
+            "description": [
+                "Verbinde die Komponenten mit",
+                "Jumper-Kabeln",
+                "Folge dem Schaltplan"
+            ],
+            "required_components": [0, 1, 2, 3, 5],
+            "completion_check": lambda ids: all(comp in ids for comp in [0, 1, 2, 3, 5])
+        },
+        6: {
+            "title": "Test & Fertigstellung",
+            "description": [
+                "Schaltung ist vollständig!",
+                "Teste die LED-Funktion",
+                "Herzlichen Glückwunsch!"
+            ],
+            "required_components": [0, 1, 2, 3, 5],
+            "completion_check": lambda ids: all(comp in ids for comp in [0, 1, 2, 3, 5])
+        }
+    }
+    
+    # Bestimme aktuellen Schritt
+    for step_num in range(1, 7):
+        if not steps[step_num]["completion_check"](detected_ids):
+            return step_num, steps[step_num]
+    
+    # Alle Schritte abgeschlossen
+    return 6, steps[6]
 
 def get_component_color(marker_id):
     """Gib komponentenspezifische Farben zurück"""
@@ -917,6 +1169,181 @@ def basic_marker_detection_modern():
     cap.release()
     cv2.destroyAllWindows()
     print("🎨 Modern UI Application closed")
+
+def add_ar_overlays(frame, detected_components, component_labels, tutorial_steps, current_step):
+    """Fügt moderne AR-Overlays hinzu: Komponentenliste links, Anweisungen rechts"""
+    h, w = frame.shape[:2]
+    
+    # Erstelle Semi-transparente Overlay-Bereiche
+    overlay = frame.copy()
+    
+    # LINKER OVERLAY - Erkannte Komponenten
+    add_components_overlay(overlay, detected_components, component_labels, w, h)
+    
+    # RECHTER OVERLAY - Schrittweise Anweisungen  
+    add_instructions_overlay(overlay, tutorial_steps, current_step, w, h)
+    
+    # Mische Original und Overlay mit Transparenz
+    alpha = 0.85  # Transparenz für Overlay-Bereiche
+    result = cv2.addWeighted(frame, alpha, overlay, 1 - alpha, 0)
+    
+    return result
+
+def add_components_overlay(frame, detected_components, component_labels, w, h):
+    """Linker Overlay: Liste der erkannten Komponenten"""
+    overlay_width = 280
+    overlay_height = h - 40
+    
+    # Dunkler Hintergrund mit abgerundeten Ecken-Effekt
+    cv2.rectangle(frame, (10, 20), (overlay_width, overlay_height), (20, 20, 20), -1)
+    cv2.rectangle(frame, (10, 20), (overlay_width, overlay_height), (0, 150, 255), 3)
+    
+    # Header
+    header_text = "ERKANNTE KOMPONENTEN"
+    cv2.putText(frame, header_text, (20, 50), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+    
+    # Linie unter Header
+    cv2.line(frame, (20, 60), (overlay_width - 20, 60), (0, 150, 255), 2)
+    
+    # Komponenten auflisten
+    y_offset = 90
+    component_count = 0
+    
+    for component_id in sorted(detected_components):
+        if component_id in component_labels:
+            component_name = component_labels[component_id]
+            component_count += 1
+            
+            # Status-Icon (grüner Kreis für erkannt)
+            cv2.circle(frame, (30, y_offset - 5), 8, (0, 255, 0), -1)
+            cv2.circle(frame, (30, y_offset - 5), 8, (255, 255, 255), 2)
+            
+            # Komponentenname
+            cv2.putText(frame, f"{component_name}", (50, y_offset), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            
+            # ID in Klammern
+            cv2.putText(frame, f"(ID: {component_id})", (50, y_offset + 15), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (180, 180, 180), 1)
+            
+            y_offset += 45
+    
+    # Wenn keine Komponenten erkannt
+    if component_count == 0:
+        cv2.putText(frame, "Keine Komponenten", (30, y_offset), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
+        cv2.putText(frame, "erkannt...", (30, y_offset + 20), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 100, 100), 1)
+    
+    # Footer mit Gesamtanzahl
+    footer_y = overlay_height - 30
+    cv2.line(frame, (20, footer_y - 20), (overlay_width - 20, footer_y - 20), (0, 150, 255), 1)
+    cv2.putText(frame, f"Gesamt: {component_count}/6", (20, footer_y), 
+               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+
+def add_instructions_overlay(frame, tutorial_steps, current_step, w, h):
+    """Rechter Overlay: Schrittweise Anweisungen"""
+    overlay_width = 320
+    overlay_x = w - overlay_width - 10
+    overlay_height = h - 40
+    
+    # Dunkler Hintergrund
+    cv2.rectangle(frame, (overlay_x, 20), (w - 10, overlay_height), (20, 20, 20), -1)
+    cv2.rectangle(frame, (overlay_x, 20), (w - 10, overlay_height), (255, 150, 0), 3)
+    
+    # Header
+    header_text = "AUFBAU-ANLEITUNG"
+    cv2.putText(frame, header_text, (overlay_x + 15, 50), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    
+    # Linie unter Header
+    cv2.line(frame, (overlay_x + 15, 60), (w - 25, 60), (255, 150, 0), 2)
+    
+    # Aktueller Schritt
+    if current_step < len(tutorial_steps):
+        step = tutorial_steps[current_step]
+        y_offset = 100
+        
+        # Schritt-Titel
+        title_lines = step["title"].split()
+        for i, line in enumerate(title_lines):
+            cv2.putText(frame, line, (overlay_x + 15, y_offset + i * 25), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        y_offset += len(title_lines) * 25 + 15
+        
+        # Beschreibung
+        desc_lines = step["description"].split('\n')
+        for line in desc_lines:
+            cv2.putText(frame, line, (overlay_x + 15, y_offset), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.45, (200, 200, 200), 1)
+            y_offset += 22
+        
+        y_offset += 20
+        
+        # Fortschritt-Balken
+        progress = (current_step + 1) / len(tutorial_steps)
+        bar_width = overlay_width - 60
+        bar_height = 15
+        bar_x = overlay_x + 30
+        bar_y = y_offset
+        
+        # Hintergrund-Balken
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + bar_width, bar_y + bar_height), (50, 50, 50), -1)
+        
+        # Fortschritt-Balken
+        progress_width = int(bar_width * progress)
+        cv2.rectangle(frame, (bar_x, bar_y), (bar_x + progress_width, bar_y + bar_height), (0, 255, 100), -1)
+        
+        # Fortschritt-Text
+        cv2.putText(frame, f"Schritt {current_step + 1}/{len(tutorial_steps)}", 
+                   (bar_x, bar_y + bar_height + 20), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+        
+        y_offset += 60
+        
+        # Benötigte Komponenten
+        cv2.putText(frame, "Benoetigt:", (overlay_x + 15, y_offset), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 200, 0), 1)
+        y_offset += 25
+        
+        component_labels_map = {
+            0: "Arduino Leonardo",
+            1: "Breadboard", 
+            2: "LED",
+            3: "220 Ohm Resistor",
+            4: "Potentiometer",
+            5: "Jumper Wires"
+        }
+        
+        for component_id in step["required_components"]:
+            name = component_labels_map.get(component_id, f"ID {component_id}")
+            # Kürze den Namen wenn nötig
+            if len(name) > 18:
+                name = name[:15] + "..."
+            cv2.putText(frame, f"• {name}", (overlay_x + 25, y_offset), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (180, 180, 180), 1)
+            y_offset += 20
+
+def check_step_progression(detected_components, tutorial_steps, current_step):
+    """Überprüft ob zum nächsten Schritt gewechselt werden kann"""
+    if current_step >= len(tutorial_steps):
+        return current_step
+    
+    # Überprüfe ob alle benötigten Komponenten für den aktuellen Schritt erkannt wurden
+    required = set(tutorial_steps[current_step]["required_components"])
+    detected = set(detected_components)
+    
+    if required.issubset(detected):
+        # Alle benötigten Komponenten erkannt - zum nächsten Schritt
+        if current_step < len(tutorial_steps) - 1:
+            print(f"✓ Schritt {current_step + 1} abgeschlossen! Weiter zu Schritt {current_step + 2}")
+            return current_step + 1
+        else:
+            print("🎉 Alle Schritte abgeschlossen! Aufbau komplett!")
+            return current_step
+    
+    return current_step
 
 def main():
     print("=== ArUco Marker Detection & AR Application ===")
