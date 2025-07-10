@@ -417,13 +417,14 @@ def ar_main():
             cv2.putText(frame, f"AR Mode: {model_status} - Press 'q' to quit", 
                        (10, frame_height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
             
-            # Vollbild-Fenster für AR-Visualisierung
-            window_name = 'AR Visualizer - 3D Breadboard'
-            cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-            cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-            cv2.imshow(window_name, frame)
-            
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            # Display the resulting frame
+            if frame is not None:
+                window_name = 'AR Visualizer - 3D Breadboard'
+                cv2.imshow(window_name, frame)
+        
+            # Handle key presses
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
                 break
                 
     except KeyboardInterrupt:

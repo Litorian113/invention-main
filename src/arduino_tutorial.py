@@ -578,8 +578,6 @@ def tutorial_mode_main():
         # Frame anzeigen
         # Erstelle Fenster im Vollbild-Modus
         window_name = 'Arduino Tutorial System'
-        cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow(window_name, frame)
         
         # Tastatur-Eingabe

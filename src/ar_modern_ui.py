@@ -344,13 +344,14 @@ def ar_main_modern():
             )
             frame = blend_overlay_with_frame(frame, instruction_overlay)
             
-            # Vollbild-Fenster für Clean AR
-            window_name = 'Clean AR Visualizer - Black Text'
-            cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-            cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-            cv2.imshow(window_name, frame)
+            # Display the resulting frame
+            if frame is not None:
+                window_name = 'Clean AR Visualizer - Black Text'
+                cv2.imshow(window_name, frame)
             
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            # Handle key presses
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
                 break
                 
     except KeyboardInterrupt:

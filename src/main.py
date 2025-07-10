@@ -610,8 +610,6 @@ def basic_marker_detection():
         # Display the frame
         # Erstelle Fenster im Vollbild-Modus
         window_name = 'ArUco Marker Detection - Optimized'
-        cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow(window_name, frame)
         
         # Break the loop when 'q' key is pressed (minimal delay)
@@ -897,11 +895,9 @@ def basic_marker_detection_modern():
         # Display the frame
         # Erstelle Fenster im Vollbild-Modus  
         window_name = 'Modern ArUco Detection - Enhanced UI'
-        cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow(window_name, frame)
         
-        # Handle key presses
+        # Handle key presses for UI controls
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
